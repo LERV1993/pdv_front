@@ -1,0 +1,41 @@
+/* src/index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    box-sizing: border-box;
+}
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+}
+.time-slot {
+    transition: all 0.2s ease;
+}
+.time-slot:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.reserved {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+.available {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+.selected {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+
+html, body, #root {
+  height: 100%;
+}
