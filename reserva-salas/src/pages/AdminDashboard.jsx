@@ -31,7 +31,6 @@ export const AdminDashboard = () => {
   // Estados para los datos
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState([]);
-  const [items, setItems] = useState([]);
   const [weeklyPrediction, setWeeklyPrediction] = useState([]);
 
   // Cargar todos los datos al montar el componente
@@ -45,7 +44,6 @@ export const AdminDashboard = () => {
         if (mounted) {
           setBookings(b);
           setUsers(u);
-          setItems([]);
           setWeeklyPrediction(wp);
         }
       } catch (e) {
