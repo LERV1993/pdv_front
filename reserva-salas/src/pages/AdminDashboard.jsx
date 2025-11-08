@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/authService';
-import { bookingService } from '../services/bookingService';
+import { reservationService } from '../services/reservationService';
 
 // Componentes
 import { Header } from '../components/shared/Header';
@@ -29,7 +29,7 @@ export const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('reservas');
   
   // Estados para los datos
-  const [bookings, setBookings] = useState([]);
+  const [reservations, setReservations] = useState([]);
   const [users, setUsers] = useState([]);
   const [weeklyPrediction, setWeeklyPrediction] = useState([]);
 
@@ -38,25 +38,33 @@ export const AdminDashboard = () => {
     let mounted = true;
     (async () => {
       try {
-        const b = bookingService.getAllBookings();
-        const u = await authService.getAllUsersAsync();
-        const wp = analyticsService.weeklyOccupancyPrediction();
+        const [r, u, wp] = await Promise.all([
+          reservationService.getAllReservations(),
+          authService.getAllUsersAsync(),
+          Promise.resolve(analyticsService.weeklyOccupancyPrediction())
+        ]);
         if (mounted) {
-          setBookings(b);
+          setReservations(r);
           setUsers(u);
           setWeeklyPrediction(wp);
         }
       } catch (e) {
-        // ignore
+        console.error('Error al cargar datos:', e);
       }
     })();
     return () => { mounted = false; };
   }, []);
 
   // --- Manejadores de eventos ---
-  const handleDeleteBooking = (bookingId) => {
-    const updatedBookings = bookingService.deleteBooking(bookingId);
-    setBookings(updatedBookings); // Actualiza el estado local
+  const handleDeleteReservation = async (reservationId) => {
+    try {
+      await reservationService.deleteReservation(reservationId);
+      // Recargar las reservas después de eliminar
+      const updatedReservations = await reservationService.getAllReservations();
+      setReservations(updatedReservations);
+    } catch (error) {
+      console.error('Error al eliminar reserva:', error);
+    }
   };
 
   const handleDeleteUser = (userId) => {
@@ -78,22 +86,23 @@ export const AdminDashboard = () => {
     const today = new Date().toISOString().split('T')[0];
     const thisMonth = new Date().toISOString().slice(0, 7);
 
-    const bookingStartISO = (b) => {
-      // soporta distintos shapes: 'date' (YYYY-MM-DD) o 'fecha_hora_inicio' (ISO)
-      if (!b) return undefined;
-      if (b.date) return b.date; // ya es YYYY-MM-DD
-      if (b.fecha_hora_inicio) {
-        try { return new Date(b.fecha_hora_inicio).toISOString().split('T')[0]; } catch(e){ return undefined; }
+    const reservationStartISO = (r) => {
+      if (!r) return undefined;
+      if (r.startTime) {
+        try { 
+          return new Date(r.startTime).toISOString().split('T')[0]; 
+        } catch(e) { 
+          return undefined; 
+        }
       }
-      if (b.start) return b.start;
       return undefined;
     };
 
     return {
-      totalBookings: bookings.length,
-      todayBookings: bookings.filter(b => bookingStartISO(b) === today).length,
-      monthBookings: bookings.filter(b => {
-        const d = bookingStartISO(b);
+      totalReservations: reservations.length,
+      todayReservations: reservations.filter(r => reservationStartISO(r) === today).length,
+      monthReservations: reservations.filter(r => {
+        const d = reservationStartISO(r);
         return d ? d.startsWith(thisMonth) : false;
       }).length,
       totalUsers: users.filter(u => u.role === 'user').length,
@@ -107,13 +116,7 @@ export const AdminDashboard = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'reservas':
-        return (
-          <TabBookings 
-            bookings={bookings} 
-            roomData={roomData} 
-            onDeleteBooking={handleDeleteBooking} 
-          />
-        );
+        return <TabBookings />;
       case 'usuarios':
         return (
           <TabUsers 
