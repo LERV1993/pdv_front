@@ -4,11 +4,11 @@ import React from 'react';
 // Un componente "tonto" que solo recibe las estadísticas ya calculadas
 export const AdminStats = ({ stats }) => {
   const statCards = [
-    { label: 'Total Reservas', value: stats.totalBookings, color: 'text-blue-600' },
-    { label: 'Reservas Hoy', value: stats.todayBookings, color: 'text-green-600' },
-    { label: 'Reservas (Mes)', value: stats.monthBookings, color: 'text-purple-600' },
-    { label: 'Total Usuarios', value: stats.totalUsers, color: 'text-orange-600' },
-    { label: 'Total Admins', value: stats.adminUsers, color: 'text-red-600' },
+    { label: 'Total Reservas', value: stats.totalReservations || stats.totalBookings || 0, color: 'text-blue-600' },
+    { label: 'Reservas Hoy', value: stats.todayReservations || stats.todayBookings || 0, color: 'text-green-600' },
+    { label: 'Reservas (Mes)', value: stats.monthReservations || stats.monthBookings || 0, color: 'text-purple-600' },
+    { label: 'Total Usuarios', value: stats.totalUsers || 0, color: 'text-orange-600' },
+    { label: 'Total Admins', value: stats.adminUsers || 0, color: 'text-red-600' },
   ];
 
   return (
