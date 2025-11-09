@@ -49,11 +49,12 @@ const enrichReservationData = async (reservation) => {
 };
 
 const formatReservationToApi = (reservationData) => ({
-  roomId: reservationData.roomId,
-  userId: reservationData.userId,
-  startTime: reservationData.startTime,
-  endTime: reservationData.endTime,
-  articles: reservationData.articles || []
+  id: null,
+  id_room: reservationData.roomId,
+  id_people: reservationData.userId,
+  date_hour_start: reservationData.startTime,
+  date_hour_end: reservationData.endTime,
+  ids_articles: reservationData.articles || []
 });
 
 export const reservationService = {

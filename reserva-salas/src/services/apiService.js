@@ -33,10 +33,8 @@ const getAuthHeaders = (includeAuth = true) => {
   if (includeAuth) {
     const token = localStorage.getItem('token');
     
-    if (isTokenExpired()) {
-      handleTokenExpiration();
-      throw new Error('Token expirado');
-    }
+    // Ya no verificamos expiración aquí, dejamos que el servidor responda 401
+    // Esto evita cerrar la sesión prematuramente por tiempo
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -54,13 +52,18 @@ export const apiService = {
         headers: getAuthHeaders(options.includeAuth !== false),
       });
       
-      if (response.status === 401) {
-        handleTokenExpiration();
-        throw new Error('Token expirado o inválido');
-      }
-      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status}`;
+        
+        // Crear un error especial para 401
+        if (response.status === 401) {
+          const error = new Error(errorMessage);
+          error.status = 401;
+          throw error;
+        }
+        
+        throw new Error(errorMessage);
       }
       return await response.json();
     } catch (error) {
@@ -77,13 +80,18 @@ export const apiService = {
         body: JSON.stringify(data),
       });
       
-      if (response.status === 401 && options.includeAuth !== false) {
-        handleTokenExpiration();
-        throw new Error('Token expirado o inválido');
-      }
-      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status}`;
+        
+        // Crear un error especial para 401
+        if (response.status === 401) {
+          const error = new Error(errorMessage);
+          error.status = 401;
+          throw error;
+        }
+        
+        throw new Error(errorMessage);
       }
       return await response.json();
     } catch (error) {
@@ -100,13 +108,18 @@ export const apiService = {
         body: JSON.stringify(data),
       });
       
-      if (response.status === 401) {
-        handleTokenExpiration();
-        throw new Error('Token expirado o inválido');
-      }
-      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status}`;
+        
+        // Crear un error especial para 401
+        if (response.status === 401) {
+          const error = new Error(errorMessage);
+          error.status = 401;
+          throw error;
+        }
+        
+        throw new Error(errorMessage);
       }
       return await response.json();
     } catch (error) {
@@ -122,13 +135,18 @@ export const apiService = {
         headers: getAuthHeaders(options.includeAuth !== false),
       });
       
-      if (response.status === 401) {
-        handleTokenExpiration();
-        throw new Error('Token expirado o inválido');
-      }
-      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || `Error HTTP ${response.status}`;
+        
+        // Crear un error especial para 401
+        if (response.status === 401) {
+          const error = new Error(errorMessage);
+          error.status = 401;
+          throw error;
+        }
+        
+        throw new Error(errorMessage);
       }
       return await response.json();
     } catch (error) {
