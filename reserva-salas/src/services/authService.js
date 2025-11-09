@@ -3,20 +3,8 @@ import { apiService } from './apiService';
 
 const AUTH_LOGIN_ENDPOINT = '/auth/login';
 
-const initUsers = () => {
-  const savedUsers = localStorage.getItem('users');
-  if (!savedUsers) {
-    const defaultUsers = [
-      { id: 1, name: 'Administrador', email: 'admin@reservas.com', password: 'admin123', role: 'admin', createdAt: new Date().toISOString() },
-      { id: 2, name: 'Usuario Test', email: 'usuario@test.com', password: 'user123', role: 'user', createdAt: new Date().toISOString() }
-    ];
-    localStorage.setItem('users', JSON.stringify(defaultUsers));
-  }
-};
 
-initUsers();
 
-// Helpers locales
 const local = {
   login: (email, password) => {
     const users = JSON.parse(localStorage.getItem('users') || '[]');
@@ -41,18 +29,26 @@ const local = {
 const api = {
   login: async (email, password) => {
     try {
-      const data = await apiService.post(AUTH_LOGIN_ENDPOINT, { email, password });
+      const data = await apiService.post(
+        AUTH_LOGIN_ENDPOINT, 
+        { username: email, password }, 
+        { includeAuth: false }
+      );
+      
       if (data && data.jwt) {
-        // Guardar el token JWT
         localStorage.setItem('token', data.jwt);
         
-        // Extraer información del usuario
+        const payload = JSON.parse(atob(data.jwt.split('.')[1]));
+        console.log('JWT Payload:', payload);
+        
         const user = {
           email: data.username,
-          name: data.username.split('@')[0], // Usar la parte antes del @ como nombre
-          role: data.jwt.includes('ADMIN') ? 'admin' : 'user', // Detectar rol del JWT
+          name: data.username.split('@')[0],
+          role: payload.authorities === 'ADMIN' ? 'admin' : 'user',
           token: data.jwt
         };
+        
+        console.log('Usuario procesado:', { ...user, token: '***' });
         
         localStorage.setItem('currentUser', JSON.stringify(user));
         return { success: true, user };
@@ -86,5 +82,42 @@ export const authService = {
 
   getCurrentUser: () => {
     return api.getCurrentUser();
+  },
+
+  getTokenInfo: () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expirationTime = payload.exp * 1000;
+      const currentTime = Date.now();
+      const timeRemaining = expirationTime - currentTime;
+      
+      return {
+        expiresAt: new Date(expirationTime),
+        timeRemaining: timeRemaining,
+        isExpired: timeRemaining <= 0,
+        expiresInMinutes: Math.floor(timeRemaining / (1000 * 60))
+      };
+    } catch (error) {
+      console.error('Error obteniendo info del token:', error);
+      return null;
+    }
+  },
+
+  isAuthenticated: () => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('currentUser');
+    
+    if (!token || !user) return false;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const expirationTime = payload.exp * 1000;
+      return Date.now() < expirationTime;
+    } catch (error) {
+      return false;
+    }
   }
 };

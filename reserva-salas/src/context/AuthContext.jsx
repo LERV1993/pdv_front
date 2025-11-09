@@ -1,6 +1,7 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { useTokenExpiration } from '../hooks/useTokenExpiration';
 
 export const AuthContext = createContext();
 
@@ -9,19 +10,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Comprobamos si hay un usuario (soporta modo API o local)
-    let mounted = true;
-    (async () => {
-      try {
-        const savedUser = await authService.getCurrentUserAsync();
-        if (mounted && savedUser) setUser(savedUser);
-      } catch (e) {
-        // ignore
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-    return () => { mounted = false; };
+    const savedUser = authService.getCurrentUser();
+    const isAuthenticated = authService.isAuthenticated();
+    
+    if (savedUser && isAuthenticated) {
+      setUser(savedUser);
+    } else if (savedUser && !isAuthenticated) {
+      authService.logout();
+    }
+    
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
@@ -30,26 +28,24 @@ export const AuthProvider = ({ children }) => {
     return result;
   };
 
-  const register = async (userData) => {
-    const result = await authService.registerAsync(userData);
-    if (result && result.success) setUser(result.user);
-    return result;
-  };
-
-  const logout = async () => {
-    await authService.logout();
+  const logout = () => {
+    authService.logout();
     setUser(null);
   };
 
-  // Si está cargando, no mostramos nada (o un loader)
   if (loading) {
-    // Puedes poner un loader global aquí si quieres
     return null; 
   }
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, loading }}>
+      <TokenExpirationMonitor />
       {children}
     </AuthContext.Provider>
   );
+};
+
+const TokenExpirationMonitor = () => {
+  useTokenExpiration();
+  return null;
 };

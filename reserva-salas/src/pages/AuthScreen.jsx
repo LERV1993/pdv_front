@@ -15,19 +15,16 @@ export const AuthScreen = () => {
   const [loading, setLoading] = useState(false);
   const { login, register } = useAuth();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Usamos un setTimeout simulado para que se vea el loader
-    // En una app real, esto sería una llamada a una API
-    setTimeout(() => {
-      let result;
+    try {
       if (isLogin) {
-        result = login(formData.email, formData.password);
-        if (!result.success) {
-          setError(result.error);
+        const result = await login(formData.email, formData.password);
+        if (!result || !result.success) {
+          setError(result?.error || 'Error al iniciar sesión');
         }
       } else {
         if (formData.password !== formData.confirmPassword) {
@@ -35,20 +32,21 @@ export const AuthScreen = () => {
           setLoading(false);
           return;
         }
-        result = register({
+        const result = await register({
           name: formData.name,
           email: formData.email,
           password: formData.password
         });
-        if (!result.success) {
-          setError(result.error);
+        if (!result || !result.success) {
+          setError(result?.error || 'Error al registrarse');
         }
       }
-      // Si el login/register es exitoso, el AuthProvider
-      // y el router (que haremos en el paso 5)
-      // nos redirigirán automáticamente.
+    } catch (err) {
+      console.error('Error en autenticación:', err);
+      setError('Error de conexión');
+    } finally {
       setLoading(false);
-    }, 500); // 0.5 segundos de simulación de carga
+    }
   };
 
   const handleChange = (e) => {
