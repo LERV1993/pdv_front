@@ -50,27 +50,65 @@ Sistema moderno y completo para la gestión de reservas de salas, desarrollado c
 - **PostCSS 8.5.6** - Procesamiento de CSS
 - **Autoprefixer 10.4.21** - Compatibilidad CSS automática
 
-## 🏗️ **Arquitectura del Proyecto**
+## 🏗️ **Arquitectura y Tecnologías**
+
+### **Tecnologías Principales**
+- ⚛️ **React 19.1.1** - Framework de UI
+- ⚡ **Vite 7.1.7** - Build tool y dev server
+- 🎨 **TailwindCSS 3.4.18** - Framework de estilos utility-first
+- 📊 **Chart.js 4.5.1** - Visualización de datos y analytics
+- 🔄 **React Router** - Navegación SPA
+- 🔐 **Context API** - Gestión de estado de autenticación
+
+### **Arquitectura del Proyecto**
 
 ```
 src/
-├── components/           # Componentes reutilizables
-│   ├── admin/           # Componentes específicos del administrador
-│   ├── shared/          # Componentes compartidos
-│   └── user/            # Componentes específicos del usuario
-├── context/             # Contextos de React (AuthContext)
-├── hooks/               # Hooks personalizados
-├── pages/               # Páginas principales de la aplicación
-├── services/            # Servicios para API y lógica de negocio
-│   ├── apiService.js    # Cliente HTTP base
-│   ├── authService.js   # Autenticación y usuarios
-│   ├── roomService.js   # Gestión de salas
-│   ├── reservationService.js # Gestión de reservas
-│   ├── articleService.js # Gestión de artículos
-│   └── analyticsService.js # Análisis y reportes
-├── styles/              # Estilos globales y utilidades
-├── utils/               # Funciones utilitarias
-└── config/              # Configuraciones de la aplicación
+├── components/          # Componentes reutilizables
+│   ├── admin/          # Componentes del dashboard administrativo
+│   │   ├── WeeklyPredictionChart.jsx  # Predicción de ocupación
+│   │   ├── AdminStats.jsx             # Estadísticas generales
+│   │   ├── TabBookings.jsx            # Gestión de reservas
+│   │   └── TabRooms.jsx               # Gestión de salas
+│   ├── shared/         # Componentes compartidos (Header, Loader)
+│   └── user/           # Componentes del usuario
+│       ├── BookingForm.jsx            # Wizard de reserva (3 pasos)
+│       ├── Calendar.jsx               # Selección de fecha
+│       └── RoomSelector.jsx           # Selección de sala
+├── config/             # Configuración centralizada
+│   └── index.js       # Variables de entorno
+├── context/            # Contextos de React
+│   └── AuthContext.jsx # Autenticación y usuario actual
+├── hooks/              # Custom hooks
+│   └── useAuth.js     # Hook de autenticación
+├── pages/              # Páginas principales
+│   ├── AdminDashboard.jsx    # Dashboard administrativo
+│   ├── UserDashboard.jsx     # Dashboard de usuario
+│   └── AuthScreen.jsx        # Pantalla de login
+├── services/           # Servicios de API
+│   ├── apiService.js          # Cliente HTTP centralizado
+│   ├── authService.js         # Autenticación
+│   ├── bookingService.js      # Reservas
+│   └── roomService.js         # Salas y disponibilidad
+└── utils/              # Utilidades y helpers
+```
+
+### **Configuración Centralizada**
+
+El proyecto utiliza un sistema de configuración centralizado en `src/config/index.js`:
+
+```javascript
+// Configuración base
+export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+export const isDevelopment = import.meta.env.MODE === 'development';
+export const isProduction = import.meta.env.MODE === 'production';
+```
+
+Todos los servicios importan esta configuración:
+
+```javascript
+import config from '../config';
+const API_URL = config.apiBaseUrl;
 ```
 
 ## 🚀 **Instalación y Configuración**
@@ -94,12 +132,27 @@ yarn install
 ```
 
 ### **3. Configurar Variables de Entorno**
-Crear archivo `.env` en la raíz del proyecto:
-```env
-VITE_API_URL=http://localhost:8080
-VITE_APP_NAME=ReservaSalas
-VITE_APP_VERSION=1.0.0
+
+Copiar el archivo de ejemplo y configurar según tu entorno:
+
+```bash
+cp .env.example .env.local
 ```
+
+Editar `.env.local` con tus configuraciones:
+
+```env
+# API Base URL
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+**Archivos de entorno disponibles:**
+- `.env` - Variables base compartidas
+- `.env.development` - Configuración para desarrollo
+- `.env.production` - Configuración para producción
+- `.env.local` - Configuración local personal (no se sube a git)
+
+**Nota:** Los archivos `.env.local` y `.env.*.local` están en `.gitignore` y no se subirán al repositorio.
 
 ### **4. Ejecutar en Desarrollo**
 ```bash
@@ -135,41 +188,130 @@ yarn preview
 
 ## 🌐 **API Backend**
 
-La aplicación requiere un backend que proporcione los siguientes endpoints:
+### **Base URL**
+```
+http://localhost:8080
+```
 
-### **Autenticación**
-- `POST /auth/login` - Iniciar sesión
-- `GET /auth/users` - Obtener usuarios
+Documentación Swagger disponible en: `http://localhost:8080/swagger-ui`
 
-### **Salas**
-- `GET /rooms` - Listar todas las salas
-- `GET /rooms/{id}` - Obtener sala específica
-- `POST /rooms` - Crear nueva sala
-- `PUT /rooms/{id}` - Actualizar sala
-- `DELETE /rooms/{id}` - Eliminar sala
+### **Endpoints Principales**
 
-### **Reservas**
-- `GET /reservation/get-all-reservation-details` - Listar reservas con detalles
-- `GET /reservation/{id}` - Obtener reserva específica
-- `POST /reservation` - Crear nueva reserva
-- `DELETE /reservation/{id}` - Eliminar reserva
-- `GET /reservation/user/{userId}` - Reservas por usuario
-- `GET /reservation/room/{roomId}` - Reservas por sala
+#### **Autenticación**
+```
+POST /auth/login
+Body: { "email": "string", "password": "string" }
+Response: { "token": "jwt-token", "user": {...} }
+
+GET /people
+Response: [{ "id": 1, "name": "...", "email": "...", "isAdmin": true }]
+```
+
+#### **Salas**
+```
+GET /salas
+Response: [{ "id": 1, "nombre": "Sala A", "capacidad": 10, "tipo": "Reunión" }]
+
+GET /salas/{id}
+Response: { "id": 1, "nombre": "Sala A", "capacidad": 10 }
+
+POST /salas
+Body: { "nombre": "string", "capacidad": number, "tipo": "string" }
+
+PUT /salas/{id}
+DELETE /salas/{id}
+```
+
+#### **Reservas**
+```
+GET /reservas
+Response: [{
+  "id": 1,
+  "usuario": "Usuario",
+  "salaId": 1,
+  "fecha": "2024-01-15",
+  "horaInicio": "09:00",
+  "horaFin": "18:00",
+  "estado": "confirmada"
+}]
+
+POST /reservas
+Body: {
+  "salaId": 1,
+  "fecha": "2024-01-15",
+  "horaInicio": "09:00",
+  "horaFin": "18:00",
+  "articulos": ["Proyector", "Laptop"]
+}
+
+PUT /reservas/{id}
+DELETE /reservas/{id}
+```
+
+#### **Disponibilidad**
+```
+GET /salas/{id}/disponibilidad?fecha=2024-01-15
+Response: {
+  "disponible": true,
+  "horariosOcupados": ["10:00-12:00", "14:00-16:00"]
+}
+```
+
+#### **Analytics y Predicciones**
+```
+GET /analytics/predictions
+Response: {
+  "sala1": { "peak_day": "tuesday", "low_day": "friday" },
+  "sala2": { "peak_day": "wednesday", "low_day": "monday" }
+}
+```
+
+### **Manejo de Errores**
+
+El sistema implementa un mecanismo de fallback automático:
+- **Modo Online**: Usa backend API en `http://localhost:8080`
+- **Modo Offline**: Usa localStorage como respaldo temporal
+- **Reconexión Automática**: Intenta reconectar al API cuando esté disponible
+
+```javascript
+// Ejemplo de servicio con fallback
+export const getReservations = async () => {
+  try {
+    const response = await apiService.get('/reservas');
+    return response.data;
+  } catch (error) {
+    console.warn('API no disponible, usando datos locales');
+    return JSON.parse(localStorage.getItem('reservations') || '[]');
+  }
+};
+```
 
 ### **Artículos**
-- `GET /articles` - Listar artículos
-- `GET /articles/{id}` - Obtener artículo específico
-- `POST /articles` - Crear artículo
-- `PUT /articles/{id}` - Actualizar artículo
-- `DELETE /articles/{id}` - Eliminar artículo
+```
+GET /articulos
+Response: [{ "id": 1, "nombre": "Proyector", "categoria": "Tecnología", "disponible": true }]
+
+GET /articulos/{id}
+Response: { "id": 1, "nombre": "Proyector", "categoria": "Tecnología" }
+
+POST /articulos
+Body: { "nombre": "string", "categoria": "string", "disponible": boolean }
+
+PUT /articulos/{id}
+DELETE /articulos/{id}
+```
 
 ## 👥 **Roles y Permisos**
 
 ### **Usuario Regular**
 - ✅ Ver salas disponibles
-- ✅ Crear reservas propias
+- ✅ Crear reservas propias (día completo: 09:00-18:00)
 - ✅ Ver y cancelar reservas propias
-- ✅ Asociar artículos a reservas
+- ✅ Seleccionar artículos para reservas
+- ✅ Wizard de reserva en 3 pasos:
+  1. **Seleccionar Sala** - Ver capacidad y tipo
+  2. **Seleccionar Fecha** - Calendario con disponibilidad
+  3. **Seleccionar Artículos** - Equipamiento necesario
 
 ### **Administrador**
 - ✅ Todas las funciones de usuario regular
@@ -178,11 +320,27 @@ La aplicación requiere un backend que proporcione los siguientes endpoints:
 - ✅ Gestionar artículos (CRUD completo)
 - ✅ Ver todas las reservas del sistema
 - ✅ Cancelar cualquier reserva
-- ✅ Acceso a reportes y analytics
-- ✅ Dashboard ejecutivo con métricas
-
+- ✅ Dashboard de analytics con:
+  - **Predicción de Ocupación** - Gráfico de días pico y bajos por sala
+  - **Estadísticas** - Total de reservas, salas, usuarios
+  - **Reportes** - Uso por sala, tendencias semanales
 ## 🎨 **Características de UI/UX**
 
+### **Sistema de Reservas Simplificado**
+- **Wizard de 3 Pasos**: Proceso guiado para crear reservas
+  1. Selección de sala con detalles de capacidad y tipo
+  2. Calendario interactivo con disponibilidad en tiempo real
+  3. Selección múltiple de artículos necesarios
+- **Reservas de Día Completo**: Sistema simplificado (09:00-18:00)
+- **Barra de Progreso**: Indicador visual del paso actual
+
+### **Dashboard Administrativo**
+- **Analytics con Chart.js**: Visualización de datos interactiva
+- **Predicción de Ocupación**: Gráfico semanal mostrando días pico y bajos
+- **Estadísticas en Tiempo Real**: Métricas de reservas, salas y usuarios
+- **Gestión por Tabs**: Organización clara de funcionalidades
+
+### **Experiencia General**
 - **Diseño Responsivo**: Optimizado para desktop, tablet y móvil
 - **Tema Oscuro/Claro**: Interfaz adaptable a preferencias del usuario
 - **Animaciones Suaves**: Transiciones CSS para mejor experiencia
@@ -192,19 +350,37 @@ La aplicación requiere un backend que proporcione los siguientes endpoints:
 
 ## 🔒 **Seguridad**
 
-- **Autenticación basada en tokens**: Sistema seguro de sesiones
-- **Validación de permisos**: Control de acceso por rol
+- **Autenticación basada en tokens**: Sistema seguro de sesiones con JWT
+- **Validación de permisos**: Control de acceso por rol (usuario/admin)
 - **Sanitización de datos**: Prevención de XSS y ataques similares
+- **Variables de entorno**: Configuración sensible protegida
 - **HTTPS Ready**: Preparado para despliegue seguro
+- **Fallback automático**: Sistema resiliente con localStorage como respaldo
 
 ## 📈 **Performance**
 
 - **Code Splitting**: Carga bajo demanda de componentes
 - **Lazy Loading**: Optimización de imágenes y recursos
-- **Caching Inteligente**: Gestión eficiente de datos en cache
-- **Bundle Optimization**: Tamaño mínimo de archivos JavaScript
+- **Caching Inteligente**: Gestión eficiente de datos en cache con localStorage
+- **Bundle Optimization**: Tamaño mínimo de archivos JavaScript con Vite
+- **API centralizada**: Cliente HTTP único para todas las peticiones
 
 ## 🚀 **Despliegue**
+
+### **Variables de Entorno para Producción**
+
+Antes de desplegar, configurar las variables de entorno según el hosting:
+
+**Vercel / Netlify:**
+```bash
+VITE_API_BASE_URL=https://tu-api.com
+```
+
+**Servidor Tradicional:**
+Editar `.env.production`:
+```env
+VITE_API_BASE_URL=https://tu-api-produccion.com
+```
 
 ### **Vercel (Recomendado)**
 ```bash
@@ -213,6 +389,9 @@ npm i -g vercel
 
 # Desplegar
 vercel
+
+# Configurar variables de entorno en Vercel Dashboard:
+# Settings → Environment Variables → VITE_API_BASE_URL
 ```
 
 ### **Netlify**
@@ -221,14 +400,82 @@ vercel
 npm run build
 
 # Subir carpeta dist/ a Netlify
+# Configurar variables en: Site Settings → Environment Variables
 ```
 
 ### **Servidor Tradicional**
 ```bash
-# Build del proyecto
+# Build del proyecto con .env.production configurado
 npm run build
 
-# Servir carpeta dist/ con cualquier servidor web
+# Servir carpeta dist/ con cualquier servidor web (nginx, apache, etc.)
+```
+
+## 🛠️ **Desarrollo**
+
+### **Estructura de Servicios**
+
+```javascript
+// apiService.js - Cliente HTTP centralizado
+import config from '../config';
+
+const API_URL = config.apiBaseUrl;
+
+export const apiService = {
+  get: (endpoint) => fetch(`${API_URL}${endpoint}`),
+  post: (endpoint, data) => fetch(`${API_URL}${endpoint}`, {...}),
+  // ...
+};
+
+// authService.js - Autenticación con fallback
+export const login = async (email, password) => {
+  try {
+    // Intenta API backend
+    const response = await apiService.post('/auth/login', { email, password });
+    return response.data;
+  } catch (error) {
+    // Fallback a localStorage
+    console.warn('API offline, usando datos locales');
+    return validateLocalCredentials(email, password);
+  }
+};
+```
+
+### **Sistema de Reservas**
+
+El flujo de reserva sigue 3 pasos:
+
+```javascript
+// Paso 1: Selección de sala
+const [selectedRoom, setSelectedRoom] = useState(null);
+
+// Paso 2: Selección de fecha
+const [selectedDate, setSelectedDate] = useState(null);
+
+// Paso 3: Selección de artículos
+const [selectedArticles, setSelectedArticles] = useState([]);
+
+// Crear reserva día completo (09:00-18:00)
+const booking = {
+  salaId: selectedRoom.id,
+  fecha: selectedDate,
+  horaInicio: '09:00',
+  horaFin: '18:00',
+  articulos: selectedArticles
+};
+```
+
+### **Analytics y Predicciones**
+
+```javascript
+// WeeklyPredictionChart.jsx
+const predictionData = {
+  sala1: { peak_day: 'tuesday', low_day: 'friday' },
+  sala2: { peak_day: 'wednesday', low_day: 'monday' }
+};
+
+// Genera gráfico Chart.js con líneas de predicción
+<Line data={chartData} options={chartOptions} />
 ```
 
 ## 🤝 **Contribución**
