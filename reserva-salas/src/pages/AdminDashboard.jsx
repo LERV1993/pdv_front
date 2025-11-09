@@ -1,7 +1,6 @@
 // src/pages/AdminDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { authService } from '../services/authService';
 import { reservationService } from '../services/reservationService';
 
 // Componentes
@@ -9,7 +8,6 @@ import { Header } from '../components/shared/Header';
 import { AdminStats } from '../components/admin/AdminStats';
 import { AdminTabs } from '../components/admin/AdminTabs';
 import { TabBookings } from '../components/admin/TabBookings';
-import { TabUsers } from '../components/admin/TabUsers';
 import { TabRooms } from '../components/admin/TabRooms';
 import { TabItems } from '../components/admin/TabItems';
 import { TabSalas } from '../components/admin/TabSalas';
@@ -17,12 +15,6 @@ import { analyticsService } from '../services/analyticsService';
 import WeeklyPredictionChart from '../components/admin/WeeklyPredictionChart';
 import { TabReports } from '../components/admin/TabReports';
 
-// Datos estáticos de las salas (igual que en UserDashboard)
-const roomData = {
-  'sala-a': { name: 'Sala A - Ejecutiva', capacity: '8 personas', features: 'Proyector, WiFi, AC', color: 'from-purple-500 to-pink-500' },
-  'sala-b': { name: 'Sala B - Conferencias', capacity: '20 personas', features: 'Pantalla LED, Audio, WiFi', color: 'from-green-500 to-teal-500' },
-  'sala-c': { name: 'Sala C - Creativa', capacity: '12 personas', features: 'Pizarra, Sofás, WiFi', color: 'from-orange-500 to-red-500' }
-};
 
 export const AdminDashboard = () => {
   const { user } = useAuth();
@@ -30,7 +22,6 @@ export const AdminDashboard = () => {
   
   // Estados para los datos
   const [reservations, setReservations] = useState([]);
-  const [users, setUsers] = useState([]);
   const [weeklyPrediction, setWeeklyPrediction] = useState([]);
 
   // Cargar todos los datos al montar el componente
@@ -38,14 +29,12 @@ export const AdminDashboard = () => {
     let mounted = true;
     (async () => {
       try {
-        const [r, u, wp] = await Promise.all([
+        const [r, wp] = await Promise.all([
           reservationService.getAllReservations(),
-          authService.getAllUsersAsync(),
           Promise.resolve(analyticsService.weeklyOccupancyPrediction())
         ]);
         if (mounted) {
           setReservations(r);
-          setUsers(u);
           setWeeklyPrediction(wp);
         }
       } catch (e) {
@@ -59,26 +48,11 @@ export const AdminDashboard = () => {
   const handleDeleteReservation = async (reservationId) => {
     try {
       await reservationService.deleteReservation(reservationId);
-      // Recargar las reservas después de eliminar
       const updatedReservations = await reservationService.getAllReservations();
       setReservations(updatedReservations);
     } catch (error) {
       console.error('Error al eliminar reserva:', error);
     }
-  };
-
-  const handleDeleteUser = (userId) => {
-    (async () => {
-      const updatedUsers = await authService.deleteUserAsync(userId);
-      setUsers(updatedUsers);
-    })();
-  };
-
-  const handleToggleRole = (userId) => {
-    (async () => {
-      const updatedUsers = await authService.toggleUserRoleAsync(userId);
-      setUsers(updatedUsers);
-    })();
   };
 
   // --- Cálculo de Estadísticas ---
@@ -104,9 +78,7 @@ export const AdminDashboard = () => {
       monthReservations: reservations.filter(r => {
         const d = reservationStartISO(r);
         return d ? d.startsWith(thisMonth) : false;
-      }).length,
-      totalUsers: users.filter(u => u.role === 'user').length,
-      adminUsers: users.filter(u => u.role === 'admin').length
+      }).length
     };
   };
 
@@ -117,25 +89,10 @@ export const AdminDashboard = () => {
     switch (activeTab) {
       case 'reservas':
         return <TabBookings />;
-      case 'usuarios':
-        return (
-          <TabUsers 
-            users={users} 
-            currentUser={user}
-            onDeleteUser={handleDeleteUser} 
-            onToggleRole={handleToggleRole}
-          />
-        );
       case 'salas':
-        return (
-          <TabSalas />
-        );
-      case 'personas':
-        return null;
+        return <TabSalas />;
       case 'articulos':
-        return (
-          <TabItems />
-        );
+        return <TabItems />;
       default:
         return null;
     }

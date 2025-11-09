@@ -4,11 +4,9 @@ import React from 'react';
 export const AdminTabs = ({ activeTab, onTabClick }) => {
   const tabs = [
     { id: 'reservas', label: 'Gestión de Reservas' },
-    { id: 'personas', label: 'Gestión de Personas' },
-    { id: 'usuarios', label: 'Gestión de Usuarios' },
     { id: 'salas', label: 'Gestión de Salas' },
     { id: 'articulos', label: 'Gestión de Artículos' },
-    { id: 'reportes', label: 'Reportes' },
+    { id: 'reportes', label: 'Reportes' }
   ];
 
   return (

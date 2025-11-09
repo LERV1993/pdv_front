@@ -4,10 +4,10 @@ Sistema moderno y completo para la gestión de reservas de salas, desarrollado c
 
 ## 🚀 Características Principales
 
-### 👥 **Gestión de Usuarios**
-- **Autenticación dual**: Sistema de login para usuarios regulares y administradores
+### � **Autenticación**
+- **Sistema de login**: Autenticación JWT con roles (admin/usuario)
 - **Perfiles diferenciados**: Interfaz específica según el rol del usuario
-- **Gestión de usuarios**: Los administradores pueden crear, editar y gestionar usuarios
+- **Sesiones seguras**: Token Bearer con renovación automática
 
 ### 🏢 **Gestión de Salas**
 - **Catálogo de salas**: Visualización completa de todas las salas disponibles
@@ -20,13 +20,13 @@ Sistema moderno y completo para la gestión de reservas de salas, desarrollado c
 - **Calendario interactivo**: Selección visual de fechas y horarios
 - **Verificación de conflictos**: Prevención automática de solapamientos
 - **Gestión completa**: Crear, visualizar, modificar y cancelar reservas
-- **Filtros avanzados**: Búsqueda por fecha, sala, usuario y estado
+- **Filtros avanzados**: Búsqueda por fecha, sala y estado
 
 ### 📊 **Panel de Administración**
 - **Dashboard ejecutivo**: Métricas y estadísticas en tiempo real
 - **Reportes detallados**: Análisis de uso y ocupación
 - **Predicciones**: Algoritmos de predicción de ocupación semanal
-- **Gestión integral**: Control total sobre usuarios, salas y reservas
+- **Gestión integral**: Control total sobre salas, reservas y artículos
 
 ### 🎯 **Gestión de Artículos**
 - **Inventario digital**: Catálogo de artículos y recursos disponibles
@@ -193,106 +193,205 @@ yarn preview
 http://localhost:8080
 ```
 
-Documentación Swagger disponible en: `http://localhost:8080/swagger-ui`
+Documentación Swagger disponible en: `http://localhost:8080/v3/api-docs`
+
+### **Autenticación**
+
+Todos los endpoints (excepto `/auth/login`) requieren un token JWT en el header:
+```
+Authorization: Bearer <jwt-token>
+```
 
 ### **Endpoints Principales**
 
 #### **Autenticación**
-```
+```http
 POST /auth/login
-Body: { "email": "string", "password": "string" }
-Response: { "token": "jwt-token", "user": {...} }
+Content-Type: application/json
 
-GET /people
-Response: [{ "id": 1, "name": "...", "email": "...", "isAdmin": true }]
+Body: 
+{
+  "username": "admin@reservas.com",
+  "password": "admin123"
+}
+
+Response:
+{
+  "username": "admin@reservas.com",
+  "message": "Authentication successful",
+  "jwt": "eyJhbGciOiJIUzM4NCJ9..."
+}
 ```
 
-#### **Salas**
+#### **Salas (Rooms)**
+```http
+GET /rooms
+Response: [
+  { "id": 1, "name": "Sala A3", "capacity": 15 }
+]
+
+POST /rooms
+Body: { "id": null, "name": "Sala A3", "capacity": 32 }
+
+PUT /rooms
+Body: { "id": 1, "name": "Sala A3 - edited", "capacity": 20 }
+
+DELETE /rooms/{id}
 ```
-GET /salas
-Response: [{ "id": 1, "nombre": "Sala A", "capacidad": 10, "tipo": "Reunión" }]
 
-GET /salas/{id}
-Response: { "id": 1, "nombre": "Sala A", "capacidad": 10 }
+#### **Reservaciones (Reservations)**
+```http
+GET /reservation
+Response: [
+  {
+    "id": 1,
+    "id_room": 3,
+    "id_people": 5,
+    "date_hour_start": "2025-10-18 11:00:00",
+    "date_hour_end": "2025-10-18 12:00:00"
+  }
+]
 
-POST /salas
-Body: { "nombre": "string", "capacidad": number, "tipo": "string" }
+GET /reservation/get-all-reservation-details
+Response: [
+  {
+    "id": 1,
+    "room": { "id": 3, "name": "Sala A", "capacity": 10 },
+    "people": { "id": 5, "name": "Juan", "email": "juan@example.com" },
+    "date_hour_start": "2025-10-18 11:00:00",
+    "date_hour_end": "2025-10-18 12:00:00",
+    "articles": [
+      { "id": 1, "name": "Proyector", "available": true }
+    ]
+  }
+]
 
-PUT /salas/{id}
-DELETE /salas/{id}
-```
+GET /reservation/reservation-details/{id}
+Response: { ...detalles completos de una reserva... }
 
-#### **Reservas**
-```
-GET /reservas
-Response: [{
-  "id": 1,
-  "usuario": "Usuario",
-  "salaId": 1,
-  "fecha": "2024-01-15",
-  "horaInicio": "09:00",
-  "horaFin": "18:00",
-  "estado": "confirmada"
-}]
+GET /reservation/reservation-details-by-person/{id}
+Response: [ ...todas las reservas de una persona... ]
 
-POST /reservas
+POST /reservation
 Body: {
-  "salaId": 1,
-  "fecha": "2024-01-15",
-  "horaInicio": "09:00",
-  "horaFin": "18:00",
-  "articulos": ["Proyector", "Laptop"]
+  "id": null,
+  "id_room": 3,
+  "id_people": 5,
+  "date_hour_start": "2025-10-18 11:00:00",
+  "date_hour_end": "2025-10-18 12:00:00",
+  "ids_articles": [1, 2, 3]
 }
 
-PUT /reservas/{id}
-DELETE /reservas/{id}
+PUT /reservation
+Body: { ...mismos campos con id obligatorio... }
+
+DELETE /reservation/{id}
 ```
 
-#### **Disponibilidad**
-```
-GET /salas/{id}/disponibilidad?fecha=2024-01-15
-Response: {
-  "disponible": true,
-  "horariosOcupados": ["10:00-12:00", "14:00-16:00"]
-}
+#### **Artículos (Articles)**
+```http
+GET /articles
+Response: [
+  { "id": 1, "name": "Proyector Gadnic 8000", "available": false }
+]
+
+GET /articles/available
+Response: [ ...artículos con available: true... ]
+
+GET /articles/not-available
+Response: [ ...artículos con available: false... ]
+
+POST /articles-reservation/available
+Body: { "date": "2025-10-18 11:00:00" }
+Response: [ ...artículos disponibles en esa fecha... ]
+
+POST /articles
+Body: { "id": null, "name": "Notebook Dell", "available": true }
+
+PUT /articles
+Body: { "id": 18, "name": "Notebook Dell small", "available": false }
+
+DELETE /articles/{id}
 ```
 
-#### **Analytics y Predicciones**
+### **Formato de Fechas**
+
+Las fechas deben enviarse en formato `YYYY-MM-DD HH:MM:SS`:
+```javascript
+// Ejemplo
+"date_hour_start": "2025-10-18 11:00:00"
+"date_hour_end": "2025-10-18 12:00:00"
 ```
-GET /analytics/predictions
-Response: {
-  "sala1": { "peak_day": "tuesday", "low_day": "friday" },
-  "sala2": { "peak_day": "wednesday", "low_day": "monday" }
-}
+
+**Nota**: La base de datos almacena en UTC, las consultas deben hacerse en GMT-3 (Buenos Aires).
+
+### **Servicios del Frontend**
+
+Todos los servicios están completamente integrados con la API:
+
+#### **reservationService.js**
+```javascript
+import { reservationService } from './services/reservationService';
+
+// Obtener todas las reservas con detalles
+const reservations = await reservationService.getAllReservationDetails();
+
+// Obtener reservas de un usuario
+const userReservations = await reservationService.getUserReservations(userId);
+
+// Crear reserva
+const newReservation = await reservationService.createReservation({
+  roomId: 3,
+  userId: 5,
+  startTime: "2025-10-18 11:00:00",
+  endTime: "2025-10-18 12:00:00",
+  articles: [1, 2, 3]
+});
+
+// Eliminar reserva
+await reservationService.deleteReservation(reservationId);
+```
+
+#### **itemsService.js**
+```javascript
+import { itemsService } from './services/itemsService';
+
+// Obtener todos los artículos
+const articles = await itemsService.getAll();
+
+// Obtener artículos disponibles
+const available = await itemsService.getAvailable();
+
+// Obtener artículos disponibles en una fecha
+const availableByDate = await itemsService.getAvailableByDate("2025-10-18 11:00:00");
+
+// Agregar artículo
+const newArticle = await itemsService.add({
+  nombre: "Proyector",
+  disponible: true
+});
+```
+
+#### **salasService.js / roomService.js**
+```javascript
+import { salasService } from './services/salasService';
+
+// Obtener todas las salas
+const rooms = await salasService.getAll();
+
+// Agregar sala
+const newRoom = await salasService.add({
+  nombre: "Sala Nueva",
+  capacidad: 20
+});
+
+// Actualizar sala
+await salasService.update(roomId, { nombre: "Sala Editada", capacidad: 25 });
 ```
 
 ### **Manejo de Errores**
 
-El sistema implementa un mecanismo de fallback automático:
-- **Modo Online**: Usa backend API en `http://localhost:8080`
-- **Modo Offline**: Usa localStorage como respaldo temporal
-- **Reconexión Automática**: Intenta reconectar al API cuando esté disponible
-
-```javascript
-// Ejemplo de servicio con fallback
-export const getReservations = async () => {
-  try {
-    const response = await apiService.get('/reservas');
-    return response.data;
-  } catch (error) {
-    console.warn('API no disponible, usando datos locales');
-    return JSON.parse(localStorage.getItem('reservations') || '[]');
-  }
-};
-```
-
-### **Artículos**
-```
-GET /articulos
-Response: [{ "id": 1, "nombre": "Proyector", "categoria": "Tecnología", "disponible": true }]
-
-GET /articulos/{id}
-Response: { "id": 1, "nombre": "Proyector", "categoria": "Tecnología" }
+Todos los servicios manejan errores y devuelven arrays vacíos o lanzan excepciones según corresponda:
 
 POST /articulos
 Body: { "nombre": "string", "categoria": "string", "disponible": boolean }

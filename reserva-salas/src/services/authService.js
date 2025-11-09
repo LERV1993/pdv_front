@@ -5,26 +5,8 @@ const AUTH_LOGIN_ENDPOINT = '/auth/login';
 
 
 
-const local = {
-  login: (email, password) => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const foundUser = users.find(u => u.email === email && u.password === password);
-    if (foundUser) {
-      localStorage.setItem('currentUser', JSON.stringify(foundUser));
-      return { success: true, user: foundUser };
-    }
-    return { success: false, error: 'Credenciales incorrectas' };
-  },
 
-  logout: () => {
-    localStorage.removeItem('currentUser');
-  },
 
-  getCurrentUser: () => {
-    const savedUser = localStorage.getItem('currentUser');
-    return savedUser ? JSON.parse(savedUser) : null;
-  }
-};
 
 const api = {
   login: async (email, password) => {

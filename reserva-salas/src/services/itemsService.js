@@ -1,46 +1,88 @@
-// src/services/itemsService.js
-const ITEMS_KEY = 'articulos';
+import api from './apiService';
 
-const seed = () => {
-  const initial = [
-    { id: 1, nombre: 'Proyector Epson EB-X05', disponible: true },
-    { id: 2, nombre: 'Laptop HP EliteBook', disponible: false },
-    { id: 3, nombre: 'Cámara Sony Alpha a6400', disponible: true },
-  ];
-  localStorage.setItem(ITEMS_KEY, JSON.stringify(initial));
-  return initial;
-};
+const formatArticleFromApi = (article) => ({
+  id: article.id,
+  nombre: article.name,
+  disponible: article.available
+});
 
-const getAllItems = () => {
-  const raw = localStorage.getItem(ITEMS_KEY);
-  if (!raw) return seed();
-  return JSON.parse(raw);
-};
-
-const saveAllItems = (arr) => localStorage.setItem(ITEMS_KEY, JSON.stringify(arr));
+const formatArticleToApi = (article) => ({
+  id: article.id || null,
+  name: article.nombre || article.name,
+  available: article.disponible !== undefined ? article.disponible : article.available
+});
 
 export const itemsService = {
-  getAll: () => getAllItems(),
-  add: ({ nombre, disponible }) => {
-    const arr = getAllItems();
-    const id = arr.length ? Math.max(...arr.map(a => a.id)) + 1 : 1;
-    const item = { id, nombre, disponible: !!disponible };
-    arr.push(item);
-    saveAllItems(arr);
-    return item;
+  async getAll() {
+    try {
+      const data = await api.get('/articles');
+      return Array.isArray(data) ? data.map(formatArticleFromApi) : [];
+    } catch (error) {
+      console.error('Error al obtener artículos:', error);
+      return [];
+    }
   },
-  update: (id, patch) => {
-    const arr = getAllItems();
-    const idx = arr.findIndex(x => x.id === id);
-    if (idx === -1) return null;
-    arr[idx] = { ...arr[idx], ...patch };
-    saveAllItems(arr);
-    return arr[idx];
+
+  async getAvailable() {
+    try {
+      const data = await api.get('/articles/available');
+      return Array.isArray(data) ? data.map(formatArticleFromApi) : [];
+    } catch (error) {
+      console.error('Error al obtener artículos disponibles:', error);
+      return [];
+    }
   },
-  delete: (id) => {
-    let arr = getAllItems();
-    arr = arr.filter(x => x.id !== id);
-    saveAllItems(arr);
-    return arr;
+
+  async getNotAvailable() {
+    try {
+      const data = await api.get('/articles/not-available');
+      return Array.isArray(data) ? data.map(formatArticleFromApi) : [];
+    } catch (error) {
+      console.error('Error al obtener artículos no disponibles:', error);
+      return [];
+    }
+  },
+
+  async getAvailableByDate(date) {
+    try {
+      const payload = { date };
+      const data = await api.post('/articles-reservation/available', payload);
+      return Array.isArray(data) ? data.map(formatArticleFromApi) : [];
+    } catch (error) {
+      console.error('Error al obtener artículos disponibles por fecha:', error);
+      return [];
+    }
+  },
+
+  async add(articleData) {
+    try {
+      const payload = formatArticleToApi(articleData);
+      const response = await api.post('/articles', payload);
+      return formatArticleFromApi(response);
+    } catch (error) {
+      console.error('Error al agregar artículo:', error);
+      throw error;
+    }
+  },
+
+  async update(id, articleData) {
+    try {
+      const payload = formatArticleToApi({ ...articleData, id });
+      const response = await api.put('/articles', payload);
+      return formatArticleFromApi(response);
+    } catch (error) {
+      console.error(`Error al actualizar artículo ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async delete(id) {
+    try {
+      await api.delete(`/articles/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Error al eliminar artículo ${id}:`, error);
+      throw error;
+    }
   }
 };

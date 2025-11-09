@@ -1,23 +1,21 @@
-// src/services/roomService.js
-import { apiService } from './apiService';
+import api from './apiService';
 
-// Endpoints
-const ROOMS_ENDPOINT = '/rooms';
-
-// Helper para formatear la sala desde la API
 const formatRoom = (room) => ({
   id: room.id,
-  name: room.room_name || room.name,
-  capacity: room.room_capacity || room.capacity,
-  description: room.description || '',
-  location: room.location || '',
-  status: room.status || 'available'
+  name: room.name,
+  capacity: room.capacity
+});
+
+const formatRoomToApi = (room) => ({
+  id: room.id || null,
+  name: room.name,
+  capacity: room.capacity
 });
 
 export const roomService = {
   async getAllRooms() {
     try {
-      const data = await apiService.get(ROOMS_ENDPOINT);
+      const data = await api.get('/rooms');
       return Array.isArray(data) ? data.map(formatRoom) : [];
     } catch (error) {
       console.error('Error al obtener salas:', error);
@@ -27,8 +25,8 @@ export const roomService = {
 
   async getRoom(id) {
     try {
-      const room = await apiService.get(`${ROOMS_ENDPOINT}/${id}`);
-      return formatRoom(room);
+      const rooms = await this.getAllRooms();
+      return rooms.find(room => room.id === parseInt(id)) || null;
     } catch (error) {
       console.error(`Error al obtener sala ${id}:`, error);
       return null;
@@ -37,10 +35,8 @@ export const roomService = {
 
   async addRoom(roomData) {
     try {
-      const response = await apiService.post(ROOMS_ENDPOINT, {
-        name: roomData.name,
-        capacity: roomData.capacity
-      });
+      const payload = formatRoomToApi(roomData);
+      const response = await api.post('/rooms', payload);
       return formatRoom(response);
     } catch (error) {
       console.error('Error al crear sala:', error);
@@ -48,12 +44,10 @@ export const roomService = {
     }
   },
 
-  async updateRoom(id, patch) {
+  async updateRoom(id, roomData) {
     try {
-      const response = await apiService.put(`${ROOMS_ENDPOINT}/${id}`, {
-        name: patch.name,
-        capacity: patch.capacity
-      });
+      const payload = formatRoomToApi({ ...roomData, id });
+      const response = await api.put('/rooms', payload);
       return formatRoom(response);
     } catch (error) {
       console.error(`Error al actualizar sala ${id}:`, error);
@@ -63,26 +57,10 @@ export const roomService = {
 
   async deleteRoom(id) {
     try {
-      await apiService.delete(`${ROOMS_ENDPOINT}/${id}`);
+      await api.delete(`/rooms/${id}`);
       return true;
     } catch (error) {
       console.error(`Error al eliminar sala ${id}:`, error);
-      throw error;
-    }
-  },
-
-  async checkRoomAvailability(roomId, startTime, endTime) {
-    try {
-      const response = await apiService.get(
-        `${ROOMS_ENDPOINT}/${roomId}/availability?start=${startTime}&end=${endTime}`
-      );
-      return {
-        isAvailable: response.isAvailable,
-        conflicts: response.conflicts || [],
-        nextAvailableSlot: response.nextAvailableSlot
-      };
-    } catch (error) {
-      console.error('Error al verificar disponibilidad:', error);
       throw error;
     }
   }
