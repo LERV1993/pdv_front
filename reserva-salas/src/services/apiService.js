@@ -1,4 +1,6 @@
-const API_BASE_URL = '/api';
+import config from '../config';
+
+const API_BASE_URL = config.apiBaseUrl;
 
 export const apiService = {
   async get(endpoint) {

@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const result = await authService.loginAsync(email, password);
+    const result = await authService.login(email, password);
     if (result && result.success) setUser(result.user);
     return result;
   };
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await authService.logoutAsync();
+    await authService.logout();
     setUser(null);
   };
 
