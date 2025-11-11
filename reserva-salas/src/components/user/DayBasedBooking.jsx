@@ -78,6 +78,8 @@ export const DayBasedBooking = ({ user, onBookingComplete }) => {
 
   const isDateAvailable = (date) => {
     const dateStr = date.toISOString().split('T')[0];
+    
+    // Verificar si hay alguna reserva en esta fecha para la sala seleccionada
     return !roomReservations.some(res => {
       const resDate = new Date(res.startTime).toISOString().split('T')[0];
       return resDate === dateStr;
@@ -132,11 +134,29 @@ export const DayBasedBooking = ({ user, onBookingComplete }) => {
   const handleBookingSubmit = async () => {
     if (!selectedRoom || !selectedDate || !startTime || !endTime) return;
 
+    const startDateTime = `${selectedDate} ${startTime}:00`;
+    const endDateTime = `${selectedDate} ${endTime}:00`;
+
+    // Verificar disponibilidad de la sala antes de crear la reserva
+    const isAvailable = await reservationService.checkRoomAvailability(
+      selectedRoom.id,
+      startDateTime,
+      endDateTime
+    );
+
+    if (!isAvailable) {
+      setToast({
+        message: 'La sala no está disponible en el horario seleccionado. Por favor elige otro horario.',
+        type: 'warning'
+      });
+      return;
+    }
+
     const bookingData = {
       roomId: selectedRoom.id,
       userId: user.id,
-      startTime: `${selectedDate} ${startTime}:00`,
-      endTime: `${selectedDate} ${endTime}:00`,
+      startTime: startDateTime,
+      endTime: endDateTime,
       articles: selectedArticles
     };
 

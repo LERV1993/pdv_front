@@ -1,8 +1,9 @@
 import { apiService } from './apiService';
-import { roomService } from './roomService';
 
 const RESERVATIONS_ENDPOINT = '/reservation';
 const RESERVATIONS_DETAILS_ENDPOINT = '/reservation/get-all-reservation-details';
+const RESERVATION_BY_PERSON_ENDPOINT = '/reservation/reservation-details-by-person';
+const RESERVATION_DETAIL_ENDPOINT = '/reservation/reservation-details';
 const formatReservationFromApi = (reservation) => ({
   id: reservation.id,
   roomId: reservation.room?.id || reservation.roomId || reservation.room_id,
@@ -12,41 +13,16 @@ const formatReservationFromApi = (reservation) => ({
   articles: reservation.articles || [],
   status: reservation.status || 'confirmed',
   createdAt: reservation.createdAt || reservation.created_at,
+  // Datos completos de la sala (desde el endpoint con detalles)
   roomName: reservation.room?.name || reservation.roomName || reservation.room_name,
   roomCapacity: reservation.room?.capacity || reservation.roomCapacity,
   roomDetails: reservation.room || reservation.roomDetails || reservation.room_details,
+  // Datos completos del usuario (desde el endpoint con detalles)
   userName: reservation.people?.name || reservation.userName || reservation.user_name,
   userEmail: reservation.people?.email || reservation.userEmail || reservation.user_email,
   userDetails: reservation.people || reservation.userDetails || reservation.user_details,
   expectedPeople: reservation.expected_people || reservation.expectedPeople
 });
-
-const enrichReservationData = async (reservation) => {
-  try {
-    if (reservation.roomName && reservation.userName) {
-      return reservation;
-    }
-
-    if (!reservation.roomName && reservation.roomId) {
-      try {
-        const room = await roomService.getRoom(reservation.roomId);
-        return {
-          ...reservation,
-          roomName: room?.name || `Sala ${reservation.roomId}`,
-          roomCapacity: room?.capacity || reservation.roomCapacity,
-          roomDetails: room || reservation.roomDetails
-        };
-      } catch (error) {
-        console.warn('No se pudo obtener detalles de la sala:', error);
-      }
-    }
-
-    return reservation;
-  } catch (error) {
-    console.error('Error al enriquecer datos de reserva:', error);
-    return reservation;
-  }
-};
 
 const formatReservationToApi = (reservationData) => ({
   id: null,
@@ -83,9 +59,9 @@ export const reservationService = {
 
   async getReservation(id) {
     try {
-      const reservation = await apiService.get(`${RESERVATIONS_ENDPOINT}/${id}`);
-      const formattedReservation = formatReservationFromApi(reservation);
-      return await enrichReservationData(formattedReservation);
+      // Usar el endpoint con detalles completos
+      const reservation = await apiService.get(`${RESERVATION_DETAIL_ENDPOINT}/${id}`);
+      return formatReservationFromApi(reservation);
     } catch (error) {
       console.error(`Error al obtener reserva ${id}:`, error);
       return null;
@@ -115,37 +91,76 @@ export const reservationService = {
 
   async getUserReservations(userId) {
     try {
-      const allReservations = await this.getAllReservations();
-      return allReservations.filter(reservation => reservation.userId === parseInt(userId));
+      // Usar el endpoint específico para obtener reservas por persona
+      const reservations = await apiService.get(`${RESERVATION_BY_PERSON_ENDPOINT}/${userId}`);
+      
+      if (!Array.isArray(reservations)) {
+        return [];
+      }
+      
+      return reservations.map(formatReservationFromApi);
     } catch (error) {
       console.error(`Error al obtener reservas del usuario ${userId}:`, error);
-      try {
-        const response = await apiService.get(`${RESERVATIONS_ENDPOINT}/user/${userId}`);
-        if (Array.isArray(response)) {
-          return response.map(formatReservationFromApi);
-        }
-      } catch (fallbackError) {
-        console.error('Error en fallback de reservas por usuario:', fallbackError);
+      return [];
+    }
+  },
+
+  async getUserReservationsByEmail(email) {
+    try {
+      // Obtener todas las reservas con detalles y filtrar por email
+      const allReservations = await apiService.get(RESERVATIONS_DETAILS_ENDPOINT);
+      
+      if (!Array.isArray(allReservations)) {
+        return [];
       }
+      
+      // Filtrar por email del usuario
+      const userReservations = allReservations.filter(
+        reservation => reservation.people?.email === email
+      );
+      
+      return userReservations.map(formatReservationFromApi);
+    } catch (error) {
+      console.error(`Error al obtener reservas del usuario por email ${email}:`, error);
       return [];
     }
   },
 
   async getRoomReservations(roomId) {
     try {
+      // Obtener todas las reservas y filtrar por sala en el cliente
       const allReservations = await this.getAllReservations();
       return allReservations.filter(reservation => reservation.roomId === parseInt(roomId));
     } catch (error) {
       console.error(`Error al obtener reservas de la sala ${roomId}:`, error);
-      try {
-        const response = await apiService.get(`${RESERVATIONS_ENDPOINT}/room/${roomId}`);
-        if (Array.isArray(response)) {
-          return response.map(formatReservationFromApi);
-        }
-      } catch (fallbackError) {
-        console.error('Error en fallback de reservas por sala:', fallbackError);
-      }
       return [];
+    }
+  },
+
+  // Verificar disponibilidad de sala en un rango de fechas
+  async checkRoomAvailability(roomId, startTime, endTime) {
+    try {
+      const roomReservations = await this.getRoomReservations(roomId);
+      
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      
+      // Verificar si hay conflictos
+      const hasConflict = roomReservations.some(reservation => {
+        const reservationStart = new Date(reservation.startTime);
+        const reservationEnd = new Date(reservation.endTime);
+        
+        return (
+          (start >= reservationStart && start < reservationEnd) ||
+          (end > reservationStart && end <= reservationEnd) ||
+          (start <= reservationStart && end >= reservationEnd)
+        );
+      });
+      
+      return !hasConflict;
+    } catch (error) {
+      console.error('Error al verificar disponibilidad:', error);
+      return false;
     }
   },
 
