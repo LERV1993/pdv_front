@@ -1,8 +1,64 @@
-import React, { useState } from 'react';
-import WeeklyPredictionChart from './WeeklyPredictionChart';
+import React, { useState, useEffect } from 'react';
+import { analyticsService } from '../../services/analyticsService';
 
 export const TabReports = ({ rooms = [] }) => {
   const [activeTab, setActiveTab] = useState('predictions');
+  const [occupancyRanking, setOccupancyRanking] = useState(null);
+  const [seasonalPatterns, setSeasonalPatterns] = useState(null);
+  const [trendingResources, setTrendingResources] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'predictions') {
+      loadOccupancyRanking();
+    } else if (activeTab === 'insights') {
+      loadSeasonalPatterns();
+      // loadTrendingResources(); // Temporalmente deshabilitado por error 401
+    }
+  }, [activeTab]);
+
+  const loadOccupancyRanking = async () => {
+    setLoading(true);
+    try {
+      const data = await analyticsService.getOccupancyRanking();
+      setOccupancyRanking(data);
+    } catch (error) {
+      console.error('Error cargando ranking:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSeasonalPatterns = async () => {
+    try {
+      const data = await analyticsService.getSeasonalPatterns();
+      setSeasonalPatterns(data);
+    } catch (error) {
+      console.error('Error cargando patrones:', error);
+    }
+  };
+
+  const loadTrendingResources = async () => {
+    setLoading(true);
+    try {
+      const data = await analyticsService.getTrendingResources();
+      setTrendingResources(data);
+    } catch (error) {
+      console.error('Error cargando tendencias:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const dayNames = {
+    monday: 'Lunes',
+    tuesday: 'Martes',
+    wednesday: 'Miércoles',
+    thursday: 'Jueves',
+    friday: 'Viernes',
+    saturday: 'Sábado',
+    sunday: 'Domingo'
+  };
 
   return (
     <div className="space-y-6">
@@ -26,16 +82,6 @@ export const TabReports = ({ rooms = [] }) => {
             📈 Predicciones Semanales
           </button>
           <button
-            onClick={() => setActiveTab('usage')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'usage'
-                ? 'border-purple-500 text-purple-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            📊 Uso Histórico
-          </button>
-          <button
             onClick={() => setActiveTab('insights')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'insights'
@@ -50,95 +96,90 @@ export const TabReports = ({ rooms = [] }) => {
 
       {/* Content */}
       {activeTab === 'predictions' && (
-        <div>
-          <WeeklyPredictionChart />
-        </div>
-      )}
-
-      {activeTab === 'usage' && (
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Uso Histórico</h3>
-          <div className="text-center py-12 text-gray-500">
-            <div className="text-4xl mb-4">📊</div>
-            <p>Próximamente: Análisis de uso histórico</p>
-          </div>
+        <div className="space-y-6">
+          {/* Ranking de ocupación por día */}
+          {loading ? (
+            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="text-gray-500 mt-4">Cargando predicciones...</p>
+            </div>
+          ) : occupancyRanking ? (
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Ranking de Ocupación por Día</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(occupancyRanking).map(([day, rooms]) => (
+                  <div key={day} className="border rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-2">{dayNames[day] || day}</h4>
+                    {rooms && rooms.length > 0 ? (
+                      <div className="space-y-2">
+                        {rooms.slice(0, 3).map((room, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm">
+                            <span className="text-gray-700">{room.room}</span>
+                            <span className={`font-semibold ${
+                              room.expected_occupancy > 0.7 ? 'text-red-600' :
+                              room.expected_occupancy > 0.4 ? 'text-yellow-600' :
+                              'text-green-600'
+                            }`}>
+                              {Math.round(room.expected_occupancy * 100)}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">Sin datos</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-lg p-6 text-center text-gray-500">
+              No hay datos de predicción disponibles
+            </div>
+          )}
         </div>
       )}
 
       {activeTab === 'insights' && (
         <div className="space-y-6">
-          {/* Insights Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 text-xl">📈</span>
-                </div>
-                <div className="ml-4">
-                  <h4 className="font-semibold text-gray-900">Tendencia Semanal</h4>
-                  <p className="text-sm text-gray-600">Análisis de patrones</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700">
-                Sala1 tiene mayor demanda los martes, mientras que Sala2 es más solicitada los lunes.
-              </p>
+          {loading ? (
+            <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="text-gray-500 mt-4">Cargando insights...</p>
             </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <span className="text-yellow-600 text-xl">⚠️</span>
+          ) : (
+            <>
+              {/* Patrones Estacionales */}
+              {seasonalPatterns && Object.keys(seasonalPatterns).length > 0 && (
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">📅 Patrones Estacionales de Salas</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(seasonalPatterns).map(([room, pattern]) => (
+                      <div key={room} className="border rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 mb-3">{room}</h4>
+                        <div className="space-y-2">
+                          <div className="flex items-center">
+                            <span className="text-green-600 mr-2">📈</span>
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Mayor demanda</p>
+                              <p className="text-sm text-gray-600">{dayNames[pattern.peak_day] || pattern.peak_day}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-blue-600 mr-2">📉</span>
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Menor demanda</p>
+                              <p className="text-sm text-gray-600">{dayNames[pattern.low_day] || pattern.low_day}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <h4 className="font-semibold text-gray-900">Días de Baja Demanda</h4>
-                  <p className="text-sm text-gray-600">Oportunidades</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700">
-                Los viernes (Sala1) y jueves (Sala2) son ideales para mantenimiento o eventos especiales.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600 text-xl">💡</span>
-                </div>
-                <div className="ml-4">
-                  <h4 className="font-semibold text-gray-900">Recomendación</h4>
-                  <p className="text-sm text-gray-600">Optimización</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-700">
-                Considere redistribuir reservas de días pico hacia días de menor demanda para balancear la carga.
-              </p>
-            </div>
-          </div>
-
-          {/* Detailed Insights */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Análisis Detallado</h3>
-            <div className="space-y-4">
-              <div className="border-l-4 border-blue-500 pl-4">
-                <h4 className="font-medium text-gray-900">Patrones de Uso</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  El análisis muestra patrones consistentes de uso por sala, lo que permite una mejor planificación de recursos.
-                </p>
-              </div>
-              <div className="border-l-4 border-green-500 pl-4">
-                <h4 className="font-medium text-gray-900">Eficiencia de Ocupación</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  La ocupación promedio varía entre 15% y 85% dependiendo del día y la sala, indicando oportunidades de optimización.
-                </p>
-              </div>
-              <div className="border-l-4 border-yellow-500 pl-4">
-                <h4 className="font-medium text-gray-900">Planificación Estratégica</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  Los datos permiten anticipar la demanda y ajustar la disponibilidad de recursos según las necesidades proyectadas.
-                </p>
-              </div>
-            </div>
-          </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

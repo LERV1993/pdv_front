@@ -11,8 +11,6 @@ import { TabBookings } from '../components/admin/TabBookings';
 import { TabRooms } from '../components/admin/TabRooms';
 import { TabItems } from '../components/admin/TabItems';
 import { TabSalas } from '../components/admin/TabSalas';
-import { analyticsService } from '../services/analyticsService';
-import WeeklyPredictionChart from '../components/admin/WeeklyPredictionChart';
 import { TabReports } from '../components/admin/TabReports';
 
 
@@ -22,20 +20,15 @@ export const AdminDashboard = () => {
   
   // Estados para los datos
   const [reservations, setReservations] = useState([]);
-  const [weeklyPrediction, setWeeklyPrediction] = useState([]);
 
   // Cargar todos los datos al montar el componente
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const [r, wp] = await Promise.all([
-          reservationService.getAllReservations(),
-          Promise.resolve(analyticsService.weeklyOccupancyPrediction())
-        ]);
+        const r = await reservationService.getAllReservations();
         if (mounted) {
           setReservations(r);
-          setWeeklyPrediction(wp);
         }
       } catch (e) {
         console.error('Error al cargar datos:', e);
@@ -115,7 +108,7 @@ export const AdminDashboard = () => {
         {/* Contenido de la Pestaña Activa */}
         <div className="bg-white rounded-xl shadow-lg p-6">
           {activeTab === 'reportes' ? (
-            <TabReports rooms={Object.entries(roomData).map(([id, r]) => ({ id, name: r.name }))} />
+            <TabReports />
           ) : (
             renderTabContent()
           )}
